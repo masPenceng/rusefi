@@ -1,0 +1,70 @@
+name: TECH99 F407 upstream baseline (not flashable for TECH99)
+
+on:
+  push:
+    branches:
+      - tech99/tcu-f407vet6
+    paths:
+      - '.github/workflows/tech99-f407-baseline.yml'
+      - 'tech99/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upstream-f407-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Initialize rusEFI submodules
+        run: bash misc/git_scripts/common_submodule_init.sh
+
+      - name: Setup Java as required by rusEFI
+        uses: ./.github/actions/setup-java
+
+      - name: Install rusEFI build dependencies
+        run: |
+          sudo bash misc/actions/add-ubuntu-latest-apt-mirrors.sh
+          sudo bash misc/actions/ubuntu-install-tools.sh
+
+      - name: Install ARM GNU Toolchain
+        uses: carlosperate/arm-none-eabi-gcc-action@v1.14.0
+        with:
+          release: '14.2.Rel1'
+
+      - name: Verify toolchain
+        run: |
+          arm-none-eabi-gcc --version
+          java -version
+
+      - name: Build unmodified upstream F407 reference
+        working-directory: firmware
+        run: bash bin/compile.sh config/boards/f407-discovery/meta-info.env --output-sync=recurse
+
+      - name: Verify ELF and produce size report
+        run: |
+          set -euo pipefail
+          test -s firmware/build/rusefi.elf
+          test -s firmware/build/rusefi.map
+          mkdir -p tech99/build-evidence
+          arm-none-eabi-size -A firmware/build/rusefi.elf | tee tech99/build-evidence/f407-upstream-sections.txt
+          arm-none-eabi-size firmware/build/rusefi.elf | tee tech99/build-evidence/f407-upstream-summary.txt
+          echo "Commit: $GITHUB_SHA" | tee tech99/build-evidence/commit.txt
+          echo 'REFERENCE F407 DISCOVERY ONLY - not VET6 512 KiB, not TCU-only, NOT FOR FLASHING' >> tech99/build-evidence/commit.txt
+
+      - name: Upload reference build evidence (not firmware)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TECH99-upstream-F407-reference-evidence
+          path: |
+            tech99/build-evidence/
+            firmware/build/rusefi.map
+          if-no-files-found: warn
+          retention-days: 14
