@@ -1,0 +1,1 @@
+! TECH99 first-pass board: no extra pins. Reference F407 Discovery for compilation only.
