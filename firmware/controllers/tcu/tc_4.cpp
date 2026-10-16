@@ -55,12 +55,16 @@ void Generic4TransmissionController::setTccState(gear_e gear) {
 	// disable if shifting
 	if (isShifting) {
 		enginePins.tcuTccOnoffSolenoid.setValue(0);
+		torqueConverterDuty = 0;
 		return;
 	}
 
 	auto tps = Sensor::get(SensorType::DriverThrottleIntent);
 	auto vss = Sensor::get(SensorType::VehicleSpeed);
 	if (!tps.Valid || !vss.Valid) {
+		// A stale CAN/sensor value must not leave the converter locked.
+		torqueConverterDuty = 0;
+		enginePins.tcuTccOnoffSolenoid.setValue(0);
 		return;
 	}
 	// only enable TC in gear 4
@@ -73,7 +77,7 @@ void Generic4TransmissionController::setTccState(gear_e gear) {
 			enginePins.tcuTccOnoffSolenoid.setValue(1);
 		} else if (vss.Value < unlockSpeed) {
 			torqueConverterDuty = 0;
-			enginePins.tcuTccOnoffSolenoid.setValue(1);
+			enginePins.tcuTccOnoffSolenoid.setValue(0);
 		}
 	} else {
 		torqueConverterDuty = 0;
@@ -82,7 +86,8 @@ void Generic4TransmissionController::setTccState(gear_e gear) {
 }
 
 void Generic4TransmissionController::setPcState(gear_e gear) {
-	uint8_t (*pcts)[TCU_TABLE_WIDTH];
+	// Unknown/unsupported gears must not dereference an uninitialized table pointer.
+	uint8_t (*pcts)[TCU_TABLE_WIDTH] = nullptr;
 
 	switch (gear) {
 	case REVERSE:
