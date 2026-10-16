@@ -1,0 +1,82 @@
+name: TECH99 VET6 TCU-only compile experiment
+
+on:
+  push:
+    branches:
+      - tech99/tcu-f407vet6
+    paths:
+      - '.github/workflows/tech99-vet6-build.yml'
+      - 'firmware/config/boards/tech99-tcu-vet6/**'
+      - 'firmware/controllers/tcu/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tcu-only-build:
+    name: Build TECH99 TCU experiment (NEVER FLASH)
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Initialize rusEFI submodules
+        run: bash misc/git_scripts/common_submodule_init.sh
+
+      - name: Set up Java
+        uses: ./.github/actions/setup-java
+
+      - name: Install rusEFI host dependencies
+        run: |
+          sudo bash misc/actions/add-ubuntu-latest-apt-mirrors.sh
+          sudo bash misc/actions/ubuntu-install-tools.sh
+
+      - name: Set up ARM GCC
+        uses: carlosperate/arm-none-eabi-gcc-action@v1.14.0
+        with:
+          release: '14.2.Rel1'
+
+      - name: Verify ARM compiler
+        run: arm-none-eabi-gcc --version
+
+      - name: Build TCU-only experimental target
+        working-directory: firmware
+        shell: bash
+        run: |
+          set -o pipefail
+          bash bin/compile.sh config/boards/tech99-tcu-vet6/meta-info.env --output-sync=recurse 2>&1 | tee ../tech99-vet6-build.log
+
+      - name: Size check against STM32F407VET6 physical flash
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s firmware/build/rusefi.elf
+          arm-none-eabi-size -A firmware/build/rusefi.elf | tee tech99-vet6-sections.txt
+          arm-none-eabi-size firmware/build/rusefi.elf | tee tech99-vet6-size.txt
+          # text + data reflects section usage reported by 'size'.
+          # Linker region and VET6 flash-sector/storage layout still require separate checks.
+          flash_bytes=$(arm-none-eabi-size firmware/build/rusefi.elf | awk 'NR==2 {print $1+$2}')
+          echo "Approximate linked text+data bytes: $flash_bytes"
+          if (( flash_bytes > 524288 )); then
+            echo "::error::Firmware exceeds STM32F407VET6 512 KiB flash target. Not flashable."
+            exit 1
+          fi
+          echo "::warning::Size fits approximate limit, but board hardware, bootloader, storage and linker have NOT been validated. DO NOT FLASH."
+
+      - name: Upload logs and measurements
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TECH99-TCU-VET6-experiment-NOT-FOR-FLASH
+          path: |
+            tech99-vet6-build.log
+            tech99-vet6-sections.txt
+            tech99-vet6-size.txt
+            firmware/build/rusefi.map
+            firmware/tunerstudio/generated/rusefi_tech99-tcu-vet6.ini
+          if-no-files-found: warn
+          retention-days: 14
