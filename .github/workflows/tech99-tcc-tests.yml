@@ -1,0 +1,23 @@
+name: TECH99 TCU TCC regression tests
+
+on:
+  push:
+    branches:
+      - tech99/tcu-f407vet6
+    paths:
+      - '.github/workflows/tech99-tcc-tests.yml'
+      - 'tech99/tests/**'
+      - 'firmware/controllers/tcu/tc_4.cpp'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tcc-software-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run actual extracted rusEFI TCC method with mocks
+        run: python3 tech99/tests/test_tcc_method.py
