@@ -38,11 +38,11 @@ const tcu_controller_s* getLiveData(size_t) {
 
 template<>
 const high_pressure_fuel_pump_s* getLiveData(size_t) {
-#if EFI_HPFP
+#if EFI_HPFP && EFI_ENGINE_CONTROL
 	return &engine->module<HpfpController>().unmock();
 #else
 		return nullptr; // explicit null to confirm that this struct is handled
-#endif // EFI_HPFP
+#endif // EFI_HPFP && EFI_ENGINE_CONTROL
 }
 
 template<>
