@@ -8,6 +8,7 @@ on:
       - '.github/workflows/tech99-vet6-build.yml'
       - 'firmware/config/boards/tech99-tcu-vet6/**'
       - 'firmware/controllers/tcu/**'
+      - 'firmware/console/binary/live_data.cpp'
   workflow_dispatch:
 
 permissions:
