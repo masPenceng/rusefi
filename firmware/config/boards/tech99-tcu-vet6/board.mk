@@ -2,6 +2,10 @@
 # NOT a verified VET6 board pinout. No transmissions/solenoids may be connected.
 # Use the upstream F407 Discovery hardware definition only for initial compilation.
 BOARDCPPSRC = $(BOARDS_DIR)/f407-discovery/board_configuration.cpp
+
+# No MMC/SDC controller is configured: exclude ChibiOS FatFS compilation.
+USE_FATFS = no
+DDEFS += -DEFI_SUPPORT_FATFS=FALSE
 DDEFS += -DSTM32F407xx
 DDEFS += -DFIRMWARE_ID=\"TECH99-TCU\"
 DDEFS += -DSTATIC_BOARD_ID=STATIC_BOARD_ID_F407_DISCOVERY
