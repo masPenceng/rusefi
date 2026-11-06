@@ -1,7 +1,7 @@
 # TECH99 standalone TCU experimental STM32F407VET6 build.
 # NOT a verified VET6 board pinout. No transmissions/solenoids may be connected.
-# Use the upstream F407 Discovery hardware definition only for initial compilation.
-BOARDCPPSRC = $(BOARDS_DIR)/f407-discovery/board_configuration.cpp
+# Use a TECH99-specific board stub; hardware mapping remains deliberately unassigned.
+BOARDCPPSRC = $(BOARD_DIR)/board_configuration.cpp
 
 # No MMC/SDC controller is configured: exclude ChibiOS FatFS compilation.
 USE_FATFS = no
